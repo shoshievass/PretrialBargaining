@@ -158,7 +158,7 @@ server <- function(input, output) {
       ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
         stat_function(fun = S_t, color = "black") +
         stat_function(fun = s_star_t, color = "blue", linetype = 2) +
-        geom_vline(xintercept = t_star, linetype = 3) +
+        geom_vline(xintercept = t_star_comp, linetype = 3) +
         stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
         stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
         scale_fill_manual(values = c("#84CA72","grey"),
