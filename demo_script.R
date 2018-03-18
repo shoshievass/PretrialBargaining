@@ -37,7 +37,7 @@ get_Expected_S_t_of_L_point <- function(lambda, alpha, J, c_p, c_d, k_p, k_d, t_
 
   integrand <- function(x) {
     S_plus = J + alpha*(c*(t_endpoint - x) + k) - (c_p*(t_endpoint - x) + k_p)
-    S = max(S_plus, 0.0)
+    S = pmax(S_plus, 0.0)
 
     return(S * getConditionalProbFirstArrival(lambda, t, x))
     # return(getProbFirstArrival(lambda, t, x) * get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, x))
@@ -124,7 +124,7 @@ c_d = 50
 k_p = 300
 k_d = 250
 J = 5000
-alpha = 0.4
+alpha = 0.5
 
 t_range = seq(from = 0, t = Tmax, length = 100)
 

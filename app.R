@@ -15,7 +15,7 @@ ui <- fluidPage(
   fluidRow(
     column(4,
            sliderInput("yInput", "Optimism (y)", 0, 1, 0.15, pre = ""),
-           sliderInput("lamInput", "Lambda", 0, 1, 0.1, pre = ""),
+           sliderInput("lamInput", "Lambda", 0.0000001, 1, 0.1, pre = ""),
            sliderInput("alphaInput", "Alpha", 0, 1, 0.6, pre = "")
     ),
     column(2,
@@ -77,10 +77,9 @@ server <- function(input, output) {
 
       integrand <- function(x) {
         S_plus = J + alpha*(c*(t_endpoint - x) + k) - (c_p*(t_endpoint - x) + k_p)
-        S = max(S_plus, 0.0)
+        S = pmax(S_plus, 0.0)
 
         return(S * getConditionalProbFirstArrival(lambda, t, x))
-        # return(getProbFirstArrival(lambda, t, x) * get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, x))
       }
 
       E_S_t <- 1.0/(1.0 - exp(-lambda * (t_endpoint - t))) * integrate(f = integrand, lower = t, upper = t_endpoint)$value
@@ -137,10 +136,11 @@ server <- function(input, output) {
     t_star_comp <- get_t_star_solve(y, alpha, Tmax, J, c_p, c_d, k_p, k_d)
 
     s_star_t = function(t){ get_s_star(lambda, y, c_p, c_d) }
+    s_star = get_s_star(lambda, y, c_p, c_d)
 
     ## check for strong plaintiff or defendent
     alpha_star <- get_alpha_star(c_p,c_d)
-    if(alpha > alpha_star | alpha == alpha_star){
+    if(alpha > alpha_star ){
 
       agreement <- function(t) {
         y <- S_t(t)
@@ -166,9 +166,15 @@ server <- function(input, output) {
                           breaks=c("Agree", "Disagree"),
                           labels=c("Agreement", "Disagreement")) +
         scale_alpha_continuous(guide = F) +
-        theme_hc()
+        theme_hc()+
+        labs(
+          x = "Time",
+          y = "",
+          title = "Strong Plaintiff"
+        ) +
+        scale_y_continuous(breaks = c(s_star), labels = c("s*"))
     }
-    else{
+    else if(alpha < alpha_star ){
       print("Strong defendent!")
 
       S_t = function(t){get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, t)}
@@ -192,7 +198,7 @@ server <- function(input, output) {
         stat_function(fun = S_t, color = "black") +
         stat_function(fun = s_star_t, color = "blue", linetype = 2) +
         stat_function(fun = E_S_t, color = "red") +
-        # geom_vline(xintercept = t_star_star_comp, linetype = 3) +
+        geom_vline(xintercept = t_star_star_comp, linetype = 3) +
         stat_function(fun=disagreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
         stat_function(fun=agreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
         scale_fill_manual(values = c("#84CA72","grey"),
@@ -200,8 +206,48 @@ server <- function(input, output) {
                           breaks=c("Agree", "Disagree"),
                           labels=c("Agreement", "Disagreement")) +
         scale_alpha_continuous(guide = F) +
-        theme_hc()
+        theme_hc() +
+        labs(
+          x = "Time",
+          y = "",
+          title = "Strong Defendant"
+        ) +
+        scale_y_continuous(breaks = c(s_star), labels = c("s*"))
     }
+    else{
+      print("alpha == alpha_star")
+
+      agreement <- function(t) {
+        y <- S_t(t)
+        y[t < t_star_comp] <- NA
+        return(y)
+      }
+
+      disagreement <- function(t) {
+        y <- S_t(t)
+        y[t > t_star_comp] <- NA
+        return(y)
+      }
+
+
+      ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
+        stat_function(fun = S_t, color = "black") +
+        # stat_function(fun = s_star_t, color = "blue", linetype = 2) +
+        # geom_vline(xintercept = t_star, linetype = 3) +
+        stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
+        stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
+        scale_fill_manual(values = c("#84CA72","grey"),
+                          name="Settlement Regime",
+                          breaks=c("Agree", "Disagree"),
+                          labels=c("Agreement", "Disagreement")) +
+        scale_alpha_continuous(guide = F) +
+        theme_hc()+
+        labs(
+          x = "Time",
+          y = "",
+          title = "Neutral"
+        )
+      }
 
   })
 }
