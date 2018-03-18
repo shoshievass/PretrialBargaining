@@ -66,6 +66,30 @@ server <- function(input, output) {
 
     S_t = function(t){get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, t)}
 
+    getConditionalProbFirstArrival <- function(lambda, t_not, t){
+      prob <- lambda * exp(-lambda * (t-t_not))
+      return(prob)
+    }
+
+    get_Expected_S_t_of_L_point <- function(lambda, alpha, J, c_p, c_d, k_p, k_d, t_endpoint, t){
+      c <- c_p + c_d
+      k <- k_p + k_d
+
+      integrand <- function(x) {
+        S_plus = J + alpha*(c*(t_endpoint - x) + k) - (c_p*(t_endpoint - x) + k_p)
+        S = max(S_plus, 0.0)
+
+        return(S * getConditionalProbFirstArrival(lambda, t, x))
+        # return(getProbFirstArrival(lambda, t, x) * get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, x))
+      }
+
+      E_S_t <- 1.0/(1.0 - exp(-lambda * (t_endpoint - t))) * integrate(f = integrand, lower = t, upper = t_endpoint)$value
+
+      return(E_S_t)
+    }
+
+    get_Expected_S_t_of_L <- Vectorize(get_Expected_S_t_of_L_point)
+
     get_t_star_analytic <- function(y, alpha, Tmax, J, c_p, c_d, k_p, k_d){
       c <- c_p + c_d
       k <- k_p + k_d
@@ -81,10 +105,27 @@ server <- function(input, output) {
         eq <- get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, t) - get_s_star(lambda, y, c_p, c_d)
 
         return(eq)
+        return(min(eq, Tmax))
       }
 
       unique_root <- uniroot(s_equation, c(0, Tmax),extendInt = "yes")$root
       return(unique_root)
+    }
+
+    get_t_star_star_solve <- function(y, alpha, Tmax, J, c_p, c_d, k_p, k_d){
+      if(get_Expected_S_t_of_L(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, Tmax-0.01) < get_s_star(lambda, y, c_p, c_d)){
+        return(Tmax)
+      }
+      else{
+        s_equation <- function(t){
+          eq <- get_Expected_S_t_of_L(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, t) - get_s_star(lambda, y, c_p, c_d)
+
+          return(eq)
+        }
+
+        unique_root <- uniroot(s_equation, c(0, Tmax-0.01),extendInt = "yes")$root
+        return(unique_root)
+      }
     }
 
     get_s_star <- function(lambda, y, c_p, c_d){
@@ -97,30 +138,71 @@ server <- function(input, output) {
 
     s_star_t = function(t){ get_s_star(lambda, y, c_p, c_d) }
 
-    agreement <- function(t) {
-      y <- S_t(t)
-      y[t < t_star_comp] <- NA
-      return(y)
+    ## check for strong plaintiff or defendent
+    alpha_star <- get_alpha_star(c_p,c_d)
+    if(alpha > alpha_star | alpha == alpha_star){
+
+      agreement <- function(t) {
+        y <- S_t(t)
+        y[t < t_star_comp] <- NA
+        return(y)
+      }
+
+      disagreement <- function(t) {
+        y <- S_t(t)
+        y[t > t_star_comp] <- NA
+        return(y)
+      }
+
+      print("Strong plaintiff!")
+      ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
+        stat_function(fun = S_t, color = "black") +
+        stat_function(fun = s_star_t, color = "blue", linetype = 2) +
+        geom_vline(xintercept = t_star, linetype = 3) +
+        stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
+        stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
+        scale_fill_manual(values = c("#84CA72","grey"),
+                          name="Settlement Regime",
+                          breaks=c("Agree", "Disagree"),
+                          labels=c("Agreement", "Disagreement")) +
+        scale_alpha_continuous(guide = F) +
+        theme_hc()
+    }
+    else{
+      print("Strong defendent!")
+
+      S_t = function(t){get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, t)}
+      E_S_t = function(t){get_Expected_S_t_of_L(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, t)}
+      t_star_star_comp <- get_t_star_star_solve(y, alpha, Tmax, J, c_p, c_d, k_p, k_d)
+
+      agreement <- function(t) {
+        y <- S_t(t)
+        y[t < t_star_star_comp] <- NA
+        return(y)
+      }
+
+      disagreement <- function(t) {
+        y <- S_t(t)
+        y[t > t_star_star_comp] <- NA
+        return(y)
+      }
+
+
+      ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
+        stat_function(fun = S_t, color = "black") +
+        stat_function(fun = s_star_t, color = "blue", linetype = 2) +
+        stat_function(fun = E_S_t, color = "red") +
+        # geom_vline(xintercept = t_star_star_comp, linetype = 3) +
+        stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
+        stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
+        scale_fill_manual(values = c("#84CA72","grey"),
+                          name="Settlement Regime",
+                          breaks=c("Agree", "Disagree"),
+                          labels=c("Agreement", "Disagreement")) +
+        scale_alpha_continuous(guide = F) +
+        theme_hc()
     }
 
-    disagreement <- function(t) {
-      y <- S_t(t)
-      y[t > t_star_comp] <- NA
-      return(y)
-    }
-
-    ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
-      stat_function(fun = S_t, color = "black") +
-      stat_function(fun = s_star_t, color = "blue", linetype = 2) +
-      geom_vline(xintercept = t_star_comp, linetype = 3) +
-      stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
-      stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
-      scale_fill_manual(values = c("#84CA72","grey"),
-                        name="Settlement Regime",
-                        breaks=c("Agree", "Disagree"),
-                        labels=c("Agreement", "Disagreement")) +
-      scale_alpha_continuous(guide = F) +
-      theme_hc()
   })
 }
 
