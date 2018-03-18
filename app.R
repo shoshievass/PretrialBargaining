@@ -193,8 +193,8 @@ server <- function(input, output) {
         stat_function(fun = s_star_t, color = "blue", linetype = 2) +
         stat_function(fun = E_S_t, color = "red") +
         # geom_vline(xintercept = t_star_star_comp, linetype = 3) +
-        stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
-        stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
+        stat_function(fun=disagreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
+        stat_function(fun=agreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
         scale_fill_manual(values = c("#84CA72","grey"),
                           name="Settlement Regime",
                           breaks=c("Agree", "Disagree"),
