@@ -244,17 +244,13 @@ server <- function(input, output) {
 
 
         print("Strong plaintiff! y_hat < y_star")
-        ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
+        settlementplot <- ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
           stat_function(fun = S_t, color = "black") +
-          annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.25)), y=(max_y*1.8), color = "black") +
+          annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.15)), y=(max_y*1.8), color = "black") +
           stat_function(fun = s_star_t, color = "blue", linetype = 2) +
-          geom_vline(xintercept = t_star_analytic, linetype = 3) +
-          annotate(geom="text", label="t*", x=t_star_analytic, y=-200, hjust=-0.5) +
-          geom_vline(xintercept = t_star_star_star, linetype = 3) +
-          annotate(geom="text", label="t**", x=t_star_star_star, y=-200, hjust=-0.5) +
           geom_segment(x = Tmax, xend=Tmax, y=0, yend=S_t(Tmax), color = deadline_color, size=4) +
           stat_function(fun = E_S_t, color = "red") +
-          annotate(geom="text", label="-- E[S_t(L) | arrival in (t, T)]", x=(Tmax*(0.25)), y=(max_y*1.6), color = "red") +
+          annotate(geom="text", label="-- E[S_t(L) | arrival in (t, T)]", x=(Tmax*(0.15)), y=(max_y*1.6), color = "red") +
           stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
           stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
           scale_fill_manual(values = c("#84CA72","grey"),
@@ -270,6 +266,16 @@ server <- function(input, output) {
           ) +
           scale_y_continuous(breaks = c(s_star), labels = c("s*")) +
           xlim(0, Tmax)
+
+        if(pmax(t_star_analytic,t_star_star_star) < Tmax){
+          settlementplot <- settlementplot +
+            geom_vline(xintercept = t_star_analytic, linetype = 3) +
+            annotate(geom="text", label="t*", x=t_star_analytic, y=-200, hjust=-0.5) +
+            geom_vline(xintercept = t_star_star_star, linetype = 3) +
+            annotate(geom="text", label="t**", x=t_star_star_star, y=-200, hjust=-0.5)
+        }
+
+        settlementplot
       }
       else{
         print("ystar < yhat")
@@ -288,7 +294,7 @@ server <- function(input, output) {
         print("Strong plaintiff!")
         ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
           stat_function(fun = S_t, color = "black") +
-          annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.25)), y=(max_y*1.8), color = "black") +
+          annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.15)), y=(max_y*1.8), color = "black") +
           stat_function(fun = s_star_t, color = "blue", linetype = 2) +
           geom_vline(xintercept = t_star_analytic, linetype = 3) +
           annotate(geom="text", label="t*", x=t_star_analytic, y=-200, hjust=-0.5) +
@@ -344,10 +350,10 @@ server <- function(input, output) {
 
       settlementplot <- ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
         stat_function(fun = S_t, color = "black") +
-        annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.75)), y=(max_y*1.8), color = "black") +
+        annotate(geom="text", label=" -- Expected Settlement Amount: S_t(L)", x=(Tmax*(0.15)), y=(max_y*1.8), color = "black") +
         stat_function(fun = s_star_t, color = "blue", linetype = 2) +
         stat_function(fun = E_S_t, color = "red") +
-        annotate(geom="text", label="-- E[S_t(L) | arrival in (t, T)]", x=(Tmax*(0.75)), y=(max_y*1.6), color = "red") +
+        annotate(geom="text", label="-- E[S_t(L) | arrival in (t, T)]", x=(Tmax*(0.15)), y=(max_y*1.6), color = "red") +
         geom_segment(x = Tmax, xend=Tmax, y=0, yend=S_t(Tmax), color = deadline_color, size=4) +
         stat_function(fun=disagreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
         stat_function(fun=agreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
