@@ -113,18 +113,31 @@ get_power_case <- function(alpha, alpha_star){
   }
 }
 
-## Define model parameters
-Tmax = 400 # length of negotiation period
-q_p = .6 # plaintiff prob winning
-q_d = .5 # defendant prob losing
-lambda = 0.01 # poisson rate
 
-c_p = 65
+
+get_s_star_star <- function(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, t){
+  c <- c_p + c_d
+  k <- k_p + k_d
+  alpha_star <- get_alpha_star(c_p,c_d)
+  s_star <- get_s_star(lambda, y, c_p, c_d)
+
+  exp_term = exp(-lambda *(Tmax - t))
+  s_star_ext <- s_star - (exp_term/(1-exp_term)) * (J - k/y)
+  return(s_star_ext)
+}
+
+## Define model parameters
+Tmax = 100 # length of negotiation period
+q_p = .65 # plaintiff prob winning
+q_d = .5 # defendant prob losing
+lambda = 0.2 # poisson rate
+
+c_p = 80
 c_d = 50
 k_p = 300
 k_d = 250
-J = 5000
-alpha = 0.5
+J = 2000
+alpha = 0.37
 
 t_range = seq(from = 0, t = Tmax, length = 100)
 
@@ -133,12 +146,12 @@ alpha_star = get_alpha_star(c_p,c_d)
 power = get_power_case(alpha,alpha_star)
 S_t = function(t){get_S_t_of_L(alpha, Tmax, J, c_p, c_d, k_p, k_d, t)}
 E_S_t = function(t){get_Expected_S_t_of_L(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, t)}
-
+s_star_star_t = function(t){get_s_star_star(lambda, alpha, J, c_p, c_d, k_p, k_d, Tmax, t)}
 f = function(t){getConditionalProbFirstArrival(0.1,0,t)}
 
 curve(S_t, from = 0, to = Tmax)
 curve(E_S_t, from = 0, to = Tmax)
-curve(f, from = 0, to = Tmax)
+curve(s_star_star_t, from = 0, to = Tmax)
 
 
 t_star_an <- get_t_star_analytic(y, alpha, Tmax, J, c_p, c_d, k_p, k_d)
@@ -147,6 +160,21 @@ t_star_star_comp <- get_t_star_star_solve(y, alpha, Tmax, J, c_p, c_d, k_p, k_d)
 
 t_star <- min(t_star_an, Tmax)
 s_star_t = function(t){ get_s_star(lambda, y, c_p, c_d) }
+
+get_y_hat <- function(J, k_p, k_d){
+  k <- k_p + k_d
+  return(k/J)
+}
+
+get_y_star <- function(lambda, alpha, c_p, c_d, k_p, k_d){
+  c <- c_p + c_d
+  k <- k_p + k_d
+  ystar <- (c / lambda) * (1.0 / (J + alpha*k - k_p))
+  return(ystar)
+}
+
+y_star <- get_y_star(lambda, alpha, c_p, c_d, k_p, k_d)
+y_hat <- get_y_hat(J, k_p, k_d)
 
 agreement <- function(t) {
   y <- S_t(t)
@@ -159,13 +187,17 @@ disagreement <- function(t) {
   y[t > t_star_comp] <- NA
   return(y)
 }
-get_t_star_star_solve
+
+deadline_color <- case_when(y <= y_hat ~ "#84CA72",
+                            y > y_hat ~  "grey")
+
+# get_t_star_star_solve
 ggplot(data.frame(x = c(0,Tmax)), aes(x = x)) +
   stat_function(fun = S_t, color = "black") +
   stat_function(fun = s_star_t, color = "blue", linetype = 2) +
   stat_function(fun = E_S_t, color = "red") +
   geom_vline(xintercept = t_star, linetype = 3) +
-  # geom_vline(xintercept = t_star, linetype = 3) +
+  geom_segment(x = Tmax, xend=Tmax, y=0, yend=S_t(Tmax), color = deadline_color, size=3) +
   stat_function(fun=agreement, geom="area", aes(fill = "Agree", alpha=0.2)) +
   stat_function(fun=disagreement, geom="area", aes(fill = "Disagree", alpha=0.2)) +
   scale_fill_manual(values = c("#84CA72","grey"),
